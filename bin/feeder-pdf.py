@@ -1,10 +1,8 @@
 import os, re
 import shutil
 import fitz
-import pdfx
 import exiftool
 import pprint
-from PIL import Image
 import argparse
 import configparser
 from pyail import PyAIL
@@ -31,6 +29,7 @@ if 'ail' in config:
 
 
 def pushToAIl(data, meta):
+    """Push json to AIL"""
     default_encoding = 'UTF-8'
 
     json_pdf = dict()
@@ -41,10 +40,14 @@ def pushToAIl(data, meta):
     source_uuid = uuid
 
     if debug:
-        print(json_pdf)
+        pprint.pprint(json_pdf)
     else:
         pyail.feed_json_item(data, meta, source, source_uuid, default_encoding)
     
+
+#############
+# Arg Parse #
+#############
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', "--pdf", nargs='+', help="list of pdf to analyse")
@@ -65,7 +68,7 @@ if not debug:
         print("\n\n[-] Error during creation of AIL instance")
         exit(0)
 
-if not args.pdf and args.file_pdf:
+if not args.pdf and not args.file_pdf:
     print("Error passing pdf")
     exit(0)
 elif args.pdf:
@@ -74,60 +77,23 @@ elif args.file_pdf:
     with open(args.file_pdf, 'r') as read_file:
         pdf_list = read_file.readlines()
 
+
 for pdf_filename in pdf_list:
     if verbose:
         print(f"\n{pdf_filename}")
     pathToSave = os.path.join(dir_path, pdf_filename.split('.')[0])
-    pathToSaveDotYellow = os.path.join(pathToSave, 'outDotYellow')
     pathToSaveImagePage = os.path.join(pathToSave, 'ImagePages')
 
     if not os.path.isdir(pathToSave):
         os.mkdir(pathToSave)
-    if not os.path.isdir(pathToSaveDotYellow):
-        os.mkdir(pathToSaveDotYellow)
     if not os.path.isdir(pathToSaveImagePage):
         os.mkdir(pathToSaveImagePage)
 
 
-    ###############
-    # Yellow Dots #
-    ###############
+    # open the file
+    pdf_file = fitz.open(pdf_filename)
+    text_file = ""
 
-    # doc = fitz.open(pdf_filename)  # open document
-
-    # for page in doc:  # iterate through the pages
-    #     pix = page.get_pixmap()  # render page to an image
-    #     out = os.path.join(pathToSave, "page-%i.png" % page.number)
-    #     pix.save(out)  # store image as a PNG
-
-    # for file in os.listdir(pathToSave):
-    #     fimg = os.path.join(pathToSave, file)
-    #     if not os.path.isdir(fimg):
-    #         blue = Image.open(fimg).split()[2]
-
-    #         yellow_dot = os.path.join(pathToSaveDotYellow, file)
-    #         blue.point(lambda x: (256-x)**2).save(f"{yellow_dot}")
-
-    #####################
-    # Extract Reference #
-    #    Url  &  Text   #
-    #####################
-
-    if verbose:
-        print("[+] Extract Reference, Url & Text")
-
-    pdf = pdfx.PDFx(pdf_filename)
-    references_dict = pdf.get_references_as_dict()
-    text_file = pdf.get_text()
-
-    # Check if pdf contains characters
-    x = re.match(r"\S", text_file, flags=re.MULTILINE)
-    if x:
-        data = text_file
-    else:
-        data = 'null'
-
-    # print(references_dict)
 
     ####################
     # Extract Metadata #
@@ -143,57 +109,56 @@ for pdf_filename in pdf_list:
     for key in metadata.keys():
         meta[f"pdf_feeder:{key}"] = metadata[key]
 
-    meta['pdf_feeder:reference'] = dict()
-    if references_dict:
-        meta['pdf_feeder:reference']['url'] = references_dict['url']
-        meta['pdf_feeder:reference']['pdf'] = references_dict['pdf']
-    else:
-        meta['pdf_feeder:reference']['url'] = []
-        meta['pdf_feeder:reference']['pdf'] = []
-
-    pprint.pprint(meta)
-    # exit(0)
-
     #################
     # Extract Image #
     #################
 
-    # open the file
-    pdf_file = fitz.open(pdf_filename)
-    
     # iterate over PDF pages
     for page_index in range(len(pdf_file)):
         
         # get the page itself
         page = pdf_file[page_index]
-        image_list = page.get_images()
+
+        # get text
+        text_file += page.get_text('text')
         cp = 0
         
-        # printing number of images found in this page
-        if image_list:
-            # print(f"[+] Found a total of {len(image_list)} images in page {page_index}")
-        
-            for image_index, img in enumerate(page.get_images(), start=1):
-                
-                # get the XREF of the image
-                xref = img[0]
-                
+        if page.get_images():
+            for image_index, img in enumerate(page.get_images(), start=1):                
                 # extract the image bytes
-                base_image = pdf_file.extract_image(xref)
+                base_image = pdf_file.extract_image(img[0])
                 image_bytes = base_image["image"]
                 image_ext = base_image["ext"]
                 
-                with open(os.path.join(pathToSaveImagePage, f"page-{page.number}_{cp}.{image_ext}"), "wb") as write_img:
+                with open(os.path.join(pathToSaveImagePage, f"image-{page.number}_{cp}.{image_ext}"), "wb") as write_img:
                     write_img.write(image_bytes)
+                cp += 1
 
-    pushToAIl(data, metadata)
+    # Check if pdf contains characters
+    x = re.match(r"\S", text_file, flags=re.MULTILINE)
+    if x:
+        data = text_file
+    else:
+        data = 'null'
 
-    # try:
-    #     shutil.rmtree(pathToSaveImagePage)
-    # except:
-    #     pass
-    
+
+    ################
+    # Extract meta #
+    #  From image  #
+    ################
+
+    for img in os.listdir(pathToSaveImagePage):
+        locPath = os.path.join(pathToSaveImagePage, img)
+        if not os.path.isdir(locPath):
+            with exiftool.ExifTool() as et:
+                img_metadata = et.get_metadata(locPath)
+                img_name = img.split(".")[0]
+                meta[f"pdf_feeder:{img_name}"] = img_metadata
+
+
+    pushToAIl(data, meta)
+
     try:
-        shutil.rmtree(pathToSaveDotYellow)
+        shutil.rmtree(pathToSave)
     except:
         pass
