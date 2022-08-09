@@ -2,5 +2,5 @@
 uuid = 19055d23-da04-46e8-9dbc-6f71c23a47da
 
 [ail]
-url = https://127.0.0.1:7020/api/v1/import/json/item
+url = https://127.0.0.1:7000
 apikey = <YOURAPIKEY> 

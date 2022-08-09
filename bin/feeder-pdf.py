@@ -2,7 +2,6 @@ import os, re
 import shutil
 import fitz
 import exiftool
-import pprint
 import argparse
 import configparser
 from pyail import PyAIL
@@ -40,7 +39,7 @@ def pushToAIl(data, meta):
     source_uuid = uuid
 
     if debug:
-        pprint.pprint(json_pdf)
+        print(json_pdf)
     else:
         pyail.feed_json_item(data, meta, source, source_uuid, default_encoding)
     
@@ -64,7 +63,6 @@ if not debug:
     try:
         pyail = PyAIL(ail_url, ail_key, ssl=False)
     except Exception as e:
-        # print(e)
         print("\n\n[-] Error during creation of AIL instance")
         exit(0)
 
@@ -81,6 +79,7 @@ elif args.file_pdf:
 for pdf_filename in pdf_list:
     if verbose:
         print(f"\n{pdf_filename}")
+
     pathToSave = os.path.join(dir_path, pdf_filename.split('.')[0])
     pathToSaveImagePage = os.path.join(pathToSave, 'ImagePages')
 
@@ -89,8 +88,7 @@ for pdf_filename in pdf_list:
     if not os.path.isdir(pathToSaveImagePage):
         os.mkdir(pathToSaveImagePage)
 
-
-    # open the file
+    # open file
     pdf_file = fitz.open(pdf_filename)
     text_file = ""
 
@@ -158,7 +156,7 @@ for pdf_filename in pdf_list:
 
     pushToAIl(data, meta)
 
-    try:
-        shutil.rmtree(pathToSave)
-    except:
-        pass
+try:
+    shutil.rmtree(pathToSave)
+except:
+    pass
