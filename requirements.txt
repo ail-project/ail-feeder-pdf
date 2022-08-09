@@ -1,5 +1,3 @@
 PyMuPDF
 PyExifTool==0.4.13
-Pillow
 pyail
-pdfx
