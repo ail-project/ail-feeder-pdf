@@ -153,6 +153,7 @@ for pdf_filename in pdf_list:
                 img_name = img.split(".")[0]
                 meta[f"pdf_feeder:{img_name}"] = img_metadata
 
+            # Openstreetmap url generation
             if "EXIF:GPSLatitude" in img_metadata.keys():
                 lat = img_metadata["EXIF:GPSLatitude"]
                 lon = img_metadata["EXIF:GPSLongitude"]
