@@ -161,7 +161,7 @@ for pdf_filename in pdf_list:
 
     pushToAIl(data, meta)
 
-try:
-    shutil.rmtree(pathToSave)
-except:
-    pass
+    try:
+        shutil.rmtree(pathToSave)
+    except:
+        pass
