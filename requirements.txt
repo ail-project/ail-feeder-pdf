@@ -1,3 +1,4 @@
 PyMuPDF
 PyExifTool==0.4.13
+libimage-exiftool-perl
 pyail
