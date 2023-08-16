@@ -67,3 +67,16 @@ Using the AIL API, `data` will be compress in gzip format and encode with base64
 
 - x: page of the document where the image is found.
 - y: numbers of images found in a specific page. start at 0.
+
+
+## License
+
+
+This software is licensed under [GNU Affero General Public License version 3](http://www.gnu.org/licenses/agpl-3.0.html)
+
+Copyright (C) 2022-2023 CIRCL - Computer Incident Response Center Luxembourg
+
+Copyright (C) 2022-2023 David Cruciani
+
+Copyright (C) 2023 Aurelien Thirion
+
